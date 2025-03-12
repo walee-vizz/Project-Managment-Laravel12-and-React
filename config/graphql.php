@@ -85,6 +85,7 @@ return [
             ],
             'mutation' => [
                 // ExampleMutation::class,
+                'createOrUpdateProject' => App\GraphQL\Mutations\CreateOrUpdateProjectMutation::class,
             ],
             // The types only available in this schema
             'types' => [

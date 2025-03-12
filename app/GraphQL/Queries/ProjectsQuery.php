@@ -15,7 +15,17 @@ class ProjectsQuery extends Query
 
     public function type(): Type
     {
-        return GraphQL::type('ProjectPagination'); // Use the new pagination type
+        return Type::nonNull(
+            Type::listOf(
+                Type::nonNull(
+                    GraphQL::type(
+                        (isset($this->args['limit']) && $this->args['limit'] > 0) && isset($this->args['page'])
+                            ? 'ProjectPagination'
+                            : 'Project'
+                    )
+                )
+            )
+        );
     }
 
     public function args(): array
@@ -28,18 +38,21 @@ class ProjectsQuery extends Query
 
     public function resolve($root, $args)
     {
-        $limit = $args['limit'] ?? 10;
-        $page = $args['page'] ?? 1;
+        if ($args['limit'] && $args['page']) {
+            $limit = $args['limit'] ?? 10;
+            $page = $args['page'] ?? 1;
 
-        // if
-        $projects = Project::paginate($limit, ['*'], 'page', $page);
+            $projects = Project::paginate($limit, ['*'], 'page', $page);
 
-        return [
-            'data' => $projects->items(),
-            'total' => $projects->total(),
-            'per_page' => $projects->perPage(),
-            'current_page' => $projects->currentPage(),
-            'last_page' => $projects->lastPage(),
-        ];
+            return [
+                'data' => $projects->items(),
+                'total' => $projects->total(),
+                'per_page' => $projects->perPage(),
+                'current_page' => $projects->currentPage(),
+                'last_page' => $projects->lastPage(),
+            ];
+        } else {
+            return Project::all();
+        }
     }
 }

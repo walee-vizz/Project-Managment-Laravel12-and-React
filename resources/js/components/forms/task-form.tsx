@@ -7,6 +7,7 @@ import SelectInput from '@/components/select-input';
 import InputError from '@/components/input-error';
 import { TASK_STATUS_TEXT_MAP, TASK_PRIORITY_TEXT_MAP } from '@/constants';
 import { Project, SelectInputOption, Task, User } from '@/types';
+import Loader from '../ui/loader';
 
 interface TaskCreateProps {
     projectId?: number | string;
@@ -16,7 +17,7 @@ interface TaskCreateProps {
 export default function TaskForm({ task, projectId }: TaskCreateProps) {
     const [users, setUsers] = useState<User[]>([]);
     const [projects, setProjects] = useState<Project[]>([]);
-    // const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
 
     const { data, setData, post, errors, reset } = useForm({
         name: task?.name || '',
@@ -33,9 +34,25 @@ export default function TaskForm({ task, projectId }: TaskCreateProps) {
     useEffect(() => {
         const fetchUsers = async () => {
             try {
-                const response = await fetch(route('users.get_list'));
-                const userData = await response.json();
-                setUsers(userData);
+                const response = await fetch('/graphql', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        query: `
+                        query {
+                          users {
+                            id
+                            name
+                          }
+                        }
+                      `
+                    })
+                });
+                const json = await response.json();
+                setUsers(json.data.users);
             } catch (error) {
                 console.error('Error fetching users:', error);
             }
@@ -43,14 +60,32 @@ export default function TaskForm({ task, projectId }: TaskCreateProps) {
         fetchUsers();
     }, []);
 
+
+
     // Fetch Projects (Only if projectId is not provided)
     useEffect(() => {
         if (!projectId) {
             const fetchProjects = async () => {
                 try {
-                    const response = await fetch(route('projects.get_list'));
-                    const projectData = await response.json();
-                    setProjects(projectData);
+                    const response = await fetch('/graphql', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            query: `
+                            query {
+                              projects {
+                                id
+                                name
+                              }
+                            }
+                          `
+                        })
+                    });
+                    const json = await response.json();
+                    setProjects(json.data.projects);
                 } catch (error) {
                     console.error('Error fetching projects:', error);
                 }
@@ -61,16 +96,22 @@ export default function TaskForm({ task, projectId }: TaskCreateProps) {
 
     const onSubmit: FormEventHandler = (e) => {
         e.preventDefault();
+        setLoading(true);
         const routeName = task?.id ? route('tasks.update', task.id) : route('tasks.store');
 
         post(routeName, {
             preserveScroll: true,
             onSuccess: () => reset(),
             onError: (errors) => console.log('Errors received:', errors),
+            onFinish: () => setLoading(false),
         });
     };
-
+    // Render loading state
+    if (loading) {
+        return <div className="mx-auto max-w-7xl sm:px-6 lg:px-8 h-[100vh] flex items-center justify-center"> <Loader /></div>;
+    }
     return (
+
         // <div className="py-12">
         <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
             <div className="overflow-hidden bg-white shadow-sm sm:rounded-lg">
